@@ -1,0 +1,229 @@
+*cybersynth.txt*   A synthwave-inspired, plugin-agnostic Neovim colorscheme.
+
+                          ___
+                         / _ \
+   ___ _   _ _ __   ___ | | | |
+  / __| | | | '_ \ / _ \| | | |
+ | (__| |_| | | | |  __/| |_| |
+  \___|\__, |_| |_|\___| \___/
+         __/ |
+        |___/
+
+                            Author: Web-Dev-Codi
+                      License: MIT
+
+==============================================================================
+CONTENTS                                                    *cybersynth-contents*
+
+  1.  Introduction .................... |cybersynth-introduction|
+  2.  Installation .................... |cybersynth-installation|
+  3.  Configuration .................. |cybersynth-configuration|
+  4.  Highlight Groups ............... |cybersynth-highlight-groups|
+  5.  Terminal Colors ................ |cybersynth-terminal-colors|
+  6.  Overrides ...................... |cybersynth-overrides|
+
+==============================================================================
+INTRODUCTION                                            *cybersynth-introduction*
+
+cybersynth.nvim is a plugin-agnostic Neovim colorscheme inspired by synthwave,
+outrun, and retrowave aesthetics. It styles Neovim's core highlight groups so
+that well-behaved plugins inherit correct colors automatically.
+
+Key features~
+  - Plugin-agnostic: styles hub groups, not plugin names
+  - Dark and light variants with matching hue families
+  - WCAG AAA contrast on dark, AA on light
+  - Zero required configuration: `:colorscheme cybersynth` and done
+  - Lua setup() API for customization
+  - Neovim >= 0.10 required
+
+==============================================================================
+INSTALLATION                                            *cybersynth-installation*
+
+See the README on GitHub for full installation instructions for all package
+managers.
+
+lazy.nvim~                                                       *cybersynth-lazy*
+>lua
+  {
+    "Web-Dev-Codi/cybersynth.nvim",
+    lazy = false,
+    priority = 1000,
+    config = function()
+      require("cybersynth").setup({})
+      vim.cmd.colorscheme("cybersynth")
+    end,
+  }
+<
+
+vim-plug~                                                     *cybersynth-vim-plug*
+>vim
+  Plug 'Web-Dev-Codi/cybersynth.nvim'
+  lua require('cybersynth').setup({})
+  colorscheme cybersynth
+<
+
+packer.nvim~                                                 *cybersynth-packer*
+>lua
+  use {
+    "Web-Dev-Codi/cybersynth.nvim",
+    config = function()
+      require("cybersynth").setup({})
+      vim.cmd.colorscheme("cybersynth")
+    end,
+  }
+<
+
+Manual~                                                         *cybersynth-manual*
+Add to |runtimepath| and source:
+>vim
+  set runtimepath^=/path/to/cybersynth.nvim
+  colorscheme cybersynth
+<
+
+==============================================================================
+CONFIGURATION                                          *cybersynth-configuration*
+
+Call |require("cybersynth").setup()| before |:colorscheme cybersynth|.
+
+Default configuration:~
+>lua
+  require("cybersynth").setup({
+    variant = "auto",     -- "dark" | "light" | "auto" (follows vim.o.background)
+    transparent = false,  -- make backgrounds transparent (NONE)
+
+    italic = {
+      comments = true,
+      keywords = false,
+      functions = false,
+      variables = false,
+      strings = false,
+    },
+
+    bold = {
+      functions = false,
+    },
+
+    overrides = {},       -- per-group overrides applied after all highlights
+  })
+<
+
+Options~
+
+  variant ~
+    Type: string, default: "auto"
+    Which palette variant to use. "auto" follows |vim.o.background|.
+
+  transparent ~
+    Type: boolean, default: false
+    When true, sets `bg = "NONE"` on Normal, NormalFloat, SignColumn,
+    StatusLine, TabLine, and related groups.
+
+  italic ~
+    Type: table
+    Controls which semantic groups render in italic. Keys: comments,
+    keywords, functions, variables, strings.
+
+  bold ~
+    Type: table
+    Controls bold rendering. Key: functions.
+
+  overrides ~
+    Type: table
+    Table of per-group highlight overrides applied after all theme groups
+    are loaded. Format:
+>lua
+      overrides = {
+        Normal = { bg = "#000000" },
+        ["@keyword"] = { fg = "#ff0000" },
+      },
+<
+
+==============================================================================
+HIGHLIGHT GROUPS                                    *cybersynth-highlight-groups*
+
+cybersynth defines the following categories of highlight groups:
+
+  Editor UI~
+    Normal, NormalNC, NormalFloat, FloatBorder, FloatTitle, WinSeparator,
+    CursorLine, CursorLineNr, LineNr, SignColumn, FoldColumn, Folded,
+    StatusLine, StatusLineNC, WinBar, WinBarNC, TabLine, TabLineSel,
+    TabLineFill, Pmenu, PmenuSel, PmenuSbar, PmenuThumb, PmenuMatch (0.11+),
+    Visual, Search, IncSearch, CurSearch, MatchParen, NonText, EndOfBuffer,
+    Whitespace, ColorColumn, DiffAdd, DiffChange, DiffDelete, DiffText,
+    DiagnosticError, DiagnosticWarn, DiagnosticInfo, DiagnosticHint,
+    DiagnosticOk, and all severity x renderer variants.
+
+  Standard syntax~
+    Comment, Constant, String, Number, Boolean, Identifier, Function,
+    Statement, Conditional, Repeat, Operator, Keyword, PreProc, Type,
+    StorageClass, Structure, Special, Tag, Delimiter, Error, Todo, etc.
+
+  Treesitter captures~
+    @variable, @function, @keyword, @type, @string, @comment, @number,
+    @boolean, @operator, @punctuation, @constructor, @attribute, @property,
+    @module, @label, @tag, @markup.*, @diff.*, and deprecated @text.* links.
+
+  LSP semantic tokens~
+    @lsp.type.* (links to corresponding @-groups), @lsp.mod.*,
+    @lsp.typemod.*.*, LspReferenceText, LspReferenceRead, LspReferenceWrite,
+    LspSignatureActiveParameter, LspCodeLens, LspInlayHint.
+
+  Diagnostic groups~
+    DiagnosticError/Warn/Info/Hint/Ok, DiagnosticVirtualText*,
+    DiagnosticVirtualLines* (0.11+), DiagnosticUnderline*,
+    DiagnosticFloating*, DiagnosticSign*, DiagnosticDeprecated,
+    DiagnosticUnnecessary.
+
+==============================================================================
+TERMINAL COLORS                                      *cybersynth-terminal-colors*
+
+Terminal ANSI colors are set via |vim.g.terminal_color_0| through
+|vim.g.terminal_color_15| matching the active palette variant.
+
+Dark variant ANSI table~
+
+  Index  Color         Hex       ~
+  0      Black         #0d0d1a
+  1      Red           #fe4450
+  2      Green         #72f1b8
+  3      Yellow        #fede5d
+  4      Blue          #82aaff
+  5      Magenta       #ff7edb
+  6      Cyan          #36f9f6
+  7      White         #c0b8d8
+  8      Bright Black  #2d2d4a
+  9      Bright Red    #ff869a
+  10     Bright Green  #ddffa7
+  11     Bright Yellow #ffe585
+  12     Bright Blue   #9cc4ff
+  13     Bright Magenta #e1acff
+  14     Bright Cyan   #a3f7ff
+  15     Bright White  #f4f0ff
+
+==============================================================================
+OVERRIDES                                                *cybersynth-overrides*
+
+Get the active palette:~
+>lua
+  local colors = require("cybersynth").get_colors()
+  local palette = require("cybersynth").get_palette()
+<
+
+Override a specific highlight after loading:~
+>lua
+  vim.api.nvim_set_hl(0, "Comment", { fg = "#ff0000" })
+<
+
+Use the |on_highlights| equivalent via config.overrides:~
+>lua
+  require("cybersynth").setup({
+    overrides = {
+      Comment = { fg = "#ff0000", italic = true },
+    },
+  })
+  vim.cmd.colorscheme("cybersynth")
+<
+
+==============================================================================
+  vim:tw=78:ts=8:noet:ft=help:norl:

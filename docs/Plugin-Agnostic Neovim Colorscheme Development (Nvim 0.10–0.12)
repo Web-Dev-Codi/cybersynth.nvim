@@ -1,0 +1,214 @@
+# Plugin-Agnostic Neovim Colorscheme Development (Nvim 0.10–0.12)
+
+## TL;DR
+
+- A truly plugin-agnostic Neovim colorscheme is achievable: define a small, well-chosen set of "hub" highlight groups (`Normal`, `NormalFloat`, `FloatBorder`, `FloatTitle`, `Pmenu*`, `StatusLine*`, `WinBar*`, `WinSeparator`, `LineNr`, `CursorLine*`, `Visual`, `Search`, `CurSearch`, `MatchParen`, `Diagnostic*`, `Diff*`, `Added`/`Changed`/`Removed`, plus the standard syntax groups and the Treesitter `@`-capture root groups). Almost every well-behaved plugin (telescope, nvim-cmp, blink.cmp, gitsigns, neo-tree, lualine, trouble, noice, snacks, mini.*, nvim-tree, indent-blankline, flash, which-key, notify) declares its own groups with `default = true` and links them to those base groups, so they inherit your colors automatically.
+- Use `vim.api.nvim_set_hl(0, name, opts)` exclusively (no `:hi clear`/Vimscript). Set `vim.g.colors_name`, set `vim.o.background`, and set `vim.g.terminal_color_0..15`. Do NOT pass `default = true` from a colorscheme — your definitions should win, and the plugin authors' `default = true` links will lose to yours, which is exactly the desired behaviour. The 0.10 default scheme broke the old "`hi clear` + assume defaults" pattern, so define every attribute you rely on explicitly.
+- The Treesitter capture tree resolves via "shorten on dot" fallback (`@variable.parameter.builtin → @variable.parameter → @variable`), and LSP semantic tokens (`@lsp.type.*`, `@lsp.mod.*`, `@lsp.typemod.*.*`, optionally suffixed `.<filetype>`) cascade the same way. Neovim 0.9+ ships default links from `@lsp.type.<x>` to corresponding `@<x>`/standard groups, so if you cover the `@`-tree, semantic tokens "just work." Neovim 0.12 added an `update = true` option to `nvim_set_hl` for additive edits, and `vim.hl` (the renamed `vim.highlight`) exposes `vim.hl.priorities` (`syntax=50`, `treesitter=100`, `semantic_tokens=125`, `diagnostics=150`, `user=200`).
+
+---
+
+## Key Findings
+
+1. **Coverage strategy**: A colorscheme that defines ~80–120 carefully chosen highlight groups (legacy syntax + UI + Treesitter `@` roots + `Diagnostic*` + a handful of `@lsp.*`) will look correct in the vast majority of plugins without writing a single plugin-specific override. The reason is that Neovim plugins overwhelmingly call `vim.api.nvim_set_hl(0, "MyPluginThing", { link = "Pmenu", default = true })`, where `default = true` means "only set if not already defined." Your colorscheme runs first and defines `Pmenu`, then the plugin's link is established, then any user that wants to override `MyPluginThing` can do so without `default`.
+
+2. **Critical 0.10 break**: Neovim 0.10 introduced a new default colorscheme and broke the long-standing assumption that `hi clear` returns to a Vim-style fallback graph. After 0.10, `FloatBorder` links to `NormalFloat` (not `WinSeparator`); `NormalFloat` is no longer linked to `Pmenu`; `WinSeparator` links to `Normal` (not `VertSplit`); `WinBar`/`WinBarNC` are now distinct (linked to `StatusLine`/`StatusLineNC`); `Added`/`Changed`/`Removed` exist as standalone groups (no longer fallback to `Diff*`); and `@variable` is set explicitly rather than linked to `Identifier`. Always set the attributes you rely on explicitly; never rely on `:hi clear` + defaults.
+
+3. **Treesitter fallback is automatic and structural**: Neovim's runtime resolves a capture like `@variable.parameter.builtin` by trying that exact name, then `@variable.parameter`, then `@variable` (dot-suffix shortening, implemented in `vim/treesitter/highlighter.lua`). Setting just `@variable`, `@function`, `@type`, `@constant`, `@keyword`, `@string`, `@comment`, `@operator`, `@punctuation`, `@number`, `@boolean`, `@property`, `@module`, `@label`, `@attribute`, `@tag`, `@markup`, and `@diff.*` covers the deep tree with one branch each.
+
+4. **Semantic tokens cascade similarly**: For an LSP token of type `T` and modifiers `M1,M2` in filetype `ft`, Neovim derives groups in this order of *increasing* priority (later wins): `@lsp.type.T`, `@lsp.type.T.ft`, `@lsp.mod.M1`, `@lsp.mod.M1.ft`, `@lsp.typemod.T.M1`, `@lsp.typemod.T.M1.ft`, etc. Neovim ships default links such as `@lsp.type.namespace → @module`, `@lsp.type.type → @type`, `@lsp.type.class → @type`, `@lsp.type.struct → @structure`, `@lsp.type.parameter → @variable.parameter`, `@lsp.type.variable → @variable`, `@lsp.type.property → @variable.member`, `@lsp.type.function → @function`, `@lsp.type.method → @function.method`, `@lsp.type.macro → @function.macro`, `@lsp.type.decorator → @function`, `@lsp.type.enumMember → @constant`, etc. So if your `@`-tree is good, semantic tokens look correct out of the box.
+
+5. **`nvim_set_hl` schema (0.10+, additive support new in 0.12)**: The `val` table accepts `fg`, `bg`, `sp` (special / underline color), `blend` (0–100 integer), `bold`, `standout`, `underline`, `undercurl`, `underdouble`, `underdotted`, `underdashed`, `strikethrough`, `italic`, `reverse`, `nocombine`, `link`, `default` (only-if-undefined), `ctermfg`, `ctermbg`, `cterm` (sub-table of attribute booleans, like `cterm = { bold = true }`), `force`, `bg_indexed` (0.11+, treats `bg` as terminal palette index 0–255), `fg_indexed` (0.11+), and the new SGR attributes `dim`, `blink`, `conceal`, `overline` (added in 0.12). Neovim 0.12 also adds `update = true`, which merges the supplied keys into the existing definition rather than replacing it (useful for "patching" one attribute). The `fg`/`bg` keys also accept the literal strings `"fg"` and `"bg"` to alias the `Normal` group's foreground/background — but `Normal` must already be defined or you'll get an error.
+
+6. **Highlight priority tower (`vim.hl.priorities`, 0.11)**: `syntax=50, treesitter=100, semantic_tokens=125, diagnostics=150, user=200`. The `vim.hl` namespace is the canonical name in 0.11+ (the old `vim.highlight` module is an alias kept for compatibility). `vim.hl.range()` accepts a `timeout` parameter and (0.11) supports multiple overlapping timed highlights.
+
+7. **Background and `colors_name`**: A colorscheme `colors/foo.lua` should: (a) call `vim.cmd("highlight clear")` (legacy reset) and `if vim.fn.exists('syntax_on') then vim.cmd('syntax reset') end`; (b) set `vim.o.background = 'dark'` (or 'light'); (c) set `vim.g.colors_name = 'foo'`; (d) issue `nvim_set_hl(0, ...)` calls. The `:colorscheme foo` command runs `colors/foo.{vim,lua}` from `runtimepath`, fires `ColorSchemePre` (with `match = 'foo'`), runs the file, then fires `ColorScheme`. Plugins listen for `ColorScheme` to re-apply links so that switching colorschemes works.
+
+8. **Plugin patterns observed in the wild**:
+ - **gitsigns.nvim** uses an explicit *fallback chain* per group, e.g. `GitSignsAdd` falls back to `GitGutterAdd → SignifySignAdd → DiffAddedGutter → Added → DiffAdd`. So defining either `Added` or `DiffAdd` gives you working signs.
+ - **nvim-cmp** defines `CmpItemAbbrDefault`, `CmpItemKindDefault`, `CmpItemMenuDefault` linked to `Pmenu`/related; non-`Default` versions link to those `*Default` groups. Defining `Pmenu` and `PmenuSel` (and `PmenuMatch`/`PmenuMatchSel` on 0.11+) covers nvim-cmp.
+ - **blink.cmp** uses `BlinkCmpMenu`, `BlinkCmpMenuBorder`, `BlinkCmpMenuSelection`, `BlinkCmpLabel`, `BlinkCmpLabelMatch`, etc., almost all linking to `Pmenu`/`PmenuSel`/`Search` by default.
+ - **telescope.nvim** defines `TelescopeNormal`, `TelescopeBorder`, `TelescopePromptNormal`, `TelescopePromptBorder`, `TelescopePromptTitle`, `TelescopeResultsNormal`, `TelescopeResultsBorder`, `TelescopeResultsTitle`, `TelescopePreviewNormal`, `TelescopePreviewBorder`, `TelescopePreviewTitle`, `TelescopeSelection`, `TelescopeSelectionCaret`, `TelescopeMultiSelection`, `TelescopeMatching`, `TelescopePromptPrefix`. Default links are to `Normal`, `NormalFloat`, `FloatBorder`, `Visual`, `Identifier`, `Special`.
+ - **lualine.nvim** picks from existing groups (`StatusLine`, `Normal`, `Visual`, `DiffAdd`, `DiffChange`, `DiffDelete`, `DiagnosticError`, etc.) automatically when its `theme = 'auto'` is set.
+ - **noice.nvim** uses `NoiceCmdline`, `NoiceCmdlinePopup`, `NoiceCmdlinePopupBorder*`, `NoiceConfirm*`, `NoiceMini`, `NoicePopup*`, `NoiceVirtualText`. Defaults link to `MsgArea`, `NormalFloat`, `FloatBorder`, `DiagnosticInfo`, etc.
+ - **nvim-notify** uses `NotifyERRORBorder`, `NotifyWARNBorder`, `NotifyINFOBorder`, `NotifyERRORIcon`, etc., linked to `Diagnostic*` groups.
+ - **trouble.nvim** uses `TroubleNormal`, `TroubleText`, `TroubleSource`, etc. linked to `NormalFloat`, `Comment`, `Special`.
+ - **flash.nvim** uses `FlashLabel`, `FlashMatch`, `FlashCurrent`, `FlashBackdrop` linked to `IncSearch`, `Search`, `CurSearch`, `Comment`.
+ - **indent-blankline.nvim** uses `IblIndent`, `IblWhitespace`, `IblScope` linked to `NonText`/`LineNr`/`Function`.
+ - **mini.nvim** explicitly links every module's groups to native groups (`MiniPickNormal → NormalFloat`, `MiniPickBorder → FloatBorder`, etc.).
+ - **neo-tree.nvim**, **nvim-tree.lua**, **fzf-lua**, **which-key.nvim**, **snacks.nvim** all follow the same pattern: define their own groups with `default = true`, link to `Normal`, `NormalFloat`, `FloatBorder`, `Pmenu`, `Visual`, `Comment`, `Directory`, `Special`, `DiagnosticError/Warn/Info/Hint`, `Diff*`/`Added`/`Changed`/`Removed`.
+
+9. **Version differences matter**: 0.10 introduced `Added`, `Changed`, `Removed`, `WinBar`, `WinBarNC`, `SnippetTabstop`, and renamed many `@text.*` Treesitter captures to `@markup.*`. 0.11 added `PmenuMatch`, `PmenuMatchSel`, `LspReferenceTarget`, virtual-line diagnostics groups (`DiagnosticVirtualLines{Error,Warn,Info,Hint,Ok}`), and changed the `Pmenu*` cascade so `PmenuSel` and `PmenuMatch` inherit from `Pmenu`. 0.12 added `DiffTextAdd`, the `update` flag for `nvim_set_hl`, `'winborder'` and `'pumborder'` options, the new SGR attributes (`dim`/`blink`/`conceal`/`overline`), and the experimental `vim._core.ui2` cmdline.
+
+---
+
+## Details
+
+### 1. The full `nvim_set_hl` API surface
+
+Function signature: `vim.api.nvim_set_hl(ns_id, name, val)`.
+
+- **`ns_id`**: `0` means "global highlights" (what `:colorscheme` and `:highlight` modify). Non-zero is a namespace created via `vim.api.nvim_create_namespace('foo')`. Namespace highlights are not active by default; activate with `vim.api.nvim_set_hl_ns(ns)` (global) or `vim.api.nvim_win_set_hl_ns(win, ns)` (per-window). This is how plugins like noice, treesitter highlighter, and built-in diagnostics scope their highlights without polluting global state. **A colorscheme should always use `ns_id = 0`.**
+
+- **`name`**: any valid identifier. Treesitter capture groups are written as `"@variable.parameter"`. Hyphens cause `E5248` (filetype `foo-bar` therefore can't appear in `@lsp.type.X.foo-bar`).
+
+- **`val` keys (Neovim 0.12)**:
+  - `fg`, `bg`, `sp`: `"#RRGGBB"`, color name, `"NONE"`, or the special strings `"fg"`/`"bg"` (alias for `Normal`'s fg/bg).
+  - `bg_indexed`, `fg_indexed`: bool; treat color as terminal palette index 0–255.
+  - `blend`: 0–100 integer (alpha for floating windows when `winblend`/`pumblend` is in effect).
+  - Style flags (boolean): `bold`, `italic`, `standout`, `reverse`, `underline`, `undercurl`, `underdouble`, `underdotted`, `underdashed`, `strikethrough`, `nocombine`, `altfont`, `dim` (0.12), `blink` (0.12), `conceal` (0.12), `overline` (0.12).
+  - `cterm`: nested table mirroring the style flags, taking precedence in non-true-color terminals. E.g. `cterm = { bold = true, underline = true }`. Setting top-level style flags also sets them in cterm by default.
+  - `ctermfg`, `ctermbg`: integer 0–255 or color name.
+  - `link`: name of another group to link to; if set, all other attribute keys are *ignored* (matches `:highlight link` semantics).
+  - `default`: bool; if `true` the call is a no-op when the group is already defined (matches `:highlight default`). **Plugins use this; colorschemes generally don't.**
+  - `force`: bool; if `true`, overrides even if the group is currently linked elsewhere.
+  - `update` (0.12): bool; if `true`, merge the supplied keys into the existing definition instead of replacing it. Lets you patch one attribute without a `get_hl` round-trip.
+
+- **`vim.api.nvim_get_hl(ns_id, opts)`**: opts can include `name = "X"` to fetch one group, `id = 42` for an integer id, `link = false` to follow links and return resolved attributes. Returns the same dict shape as `nvim_set_hl` accepts. Use `create = false` (in 0.10+) to avoid implicitly creating an empty group when the name doesn't exist.
+
+### 2. The fallback chain mechanics
+
+Neovim resolves a highlight in this order of precedence at draw time, picking the **highest-priority defined** entry:
+
+1. **Window-local namespace** (set via `nvim_win_set_hl_ns`) — exact group.
+2. **Global namespace 0** — exact group.
+3. **`link` chain** — if the resolved group's attributes are empty but it has a `link`, follow the link to its target, recursively. There is *no* automatic Treesitter dot-fallback for non-`@` groups; that fallback only applies inside the Treesitter highlighter when it consults captures.
+4. For Treesitter captures specifically: the highlighter, when emitting an extmark for capture `@a.b.c`, resolves the longest defined prefix: tries `@a.b.c`, then `@a.b`, then `@a`. If none are defined, no highlight is set for that match. (See `runtime/lua/vim/treesitter/highlighter.lua`.) The same dot-shortening logic applies to LSP semantic-token group derivation.
+5. Final attributes are composited: `fg`/`bg`/`sp` come from the highest-priority group with non-`NONE` values; style flags (`bold`, `italic`, etc.) accumulate by default unless `nocombine` is set on the higher-priority group, in which case it replaces lower-priority styles.
+
+### 3. The minimal "hub" set for maximum coverage
+
+Define these groups explicitly (each with concrete `fg`/`bg`/style — not just `link`) in your colorscheme. This list, in practice, propagates through 95%+ of plugins:
+
+**Editor core (legacy)**: `Normal`, `NormalNC`, `NormalFloat`, `FloatBorder`, `FloatTitle`, `FloatFooter`, `Cursor`, `lCursor`, `CursorIM`, `TermCursor`, `TermCursorNC`, `CursorLine`, `CursorColumn`, `CursorLineNr`, `LineNr`, `LineNrAbove`, `LineNrBelow`, `SignColumn`, `FoldColumn`, `Folded`, `ColorColumn`, `Conceal`, `EndOfBuffer`, `NonText`, `Whitespace`, `SpecialKey`, `Visual`, `VisualNOS`, `Search`, `IncSearch`, `CurSearch`, `Substitute`, `MatchParen`, `Pmenu`, `PmenuSel`, `PmenuSbar`, `PmenuThumb`, `PmenuKind`, `PmenuKindSel`, `PmenuExtra`, `PmenuExtraSel`, `PmenuMatch` (0.11+), `PmenuMatchSel` (0.11+), `ComplMatchIns`, `WildMenu`, `StatusLine`, `StatusLineNC`, `WinBar` (0.10+), `WinBarNC` (0.10+), `WinSeparator`, `VertSplit` (legacy alias), `TabLine`, `TabLineSel`, `TabLineFill`, `Title`, `Directory`, `ErrorMsg`, `WarningMsg`, `MoreMsg`, `Question`, `ModeMsg`, `MsgArea`, `MsgSeparator`, `QuickFixLine`, `Added`, `Changed`, `Removed`, `DiffAdd`, `DiffChange`, `DiffDelete`, `DiffText`, `DiffTextAdd` (0.12+), `SpellBad`, `SpellCap`, `SpellRare`, `SpellLocal`, `Underlined`, `ToolbarLine`, `ToolbarButton`, `RedrawDebugNormal`.
+
+**Standard syntax** (`:h group-name`): `Comment`, `Constant`, `String`, `Character`, `Number`, `Float`, `Boolean`, `Identifier`, `Function`, `Statement`, `Conditional`, `Repeat`, `Label`, `Operator`, `Keyword`, `Exception`, `PreProc`, `Include`, `Define`, `Macro`, `PreCondit`, `Type`, `StorageClass`, `Structure`, `Typedef`, `Special`, `SpecialChar`, `Tag`, `Delimiter`, `SpecialComment`, `Debug`, `Underlined`, `Ignore`, `Error`, `Todo`. (Treesitter `@`-groups link into these by default — `@comment → Comment`, `@string → String`, `@function → Function`, `@type → Type`, `@keyword → Keyword`, `@number → Number`, `@boolean → Boolean`, `@punctuation.delimiter → Delimiter`, `@operator → Operator`, etc.)
+
+**Diagnostic** (full list): `DiagnosticError`, `DiagnosticWarn`, `DiagnosticInfo`, `DiagnosticHint`, `DiagnosticOk`, `DiagnosticVirtualTextError/Warn/Info/Hint/Ok`, `DiagnosticVirtualLinesError/Warn/Info/Hint/Ok` (0.11+), `DiagnosticUnderlineError/Warn/Info/Hint/Ok`, `DiagnosticFloatingError/Warn/Info/Hint/Ok`, `DiagnosticSignError/Warn/Info/Hint/Ok`, `DiagnosticDeprecated`, `DiagnosticUnnecessary`. The `Virtual*`/`Floating*`/`Sign*` variants link by default to the base `Diagnostic{Severity}`, so defining the four severity bases is the bare minimum.
+
+**LSP support**: `LspReferenceText`, `LspReferenceRead`, `LspReferenceWrite`, `LspReferenceTarget` (0.11+), `LspSignatureActiveParameter`, `LspCodeLens`, `LspCodeLensSeparator`, `LspInlayHint`, `SnippetTabstop` (0.10+).
+
+**Treesitter `@` roots** (each defines its whole subtree via dot-fallback): `@variable`, `@variable.builtin`, `@variable.parameter`, `@variable.member`, `@constant`, `@constant.builtin`, `@constant.macro`, `@module`, `@label`, `@string`, `@string.escape`, `@string.special`, `@string.regexp`, `@character`, `@character.special`, `@number`, `@number.float`, `@boolean`, `@function`, `@function.builtin`, `@function.call`, `@function.macro`, `@function.method`, `@constructor`, `@operator`, `@keyword`, `@keyword.return`, `@keyword.import`, `@keyword.exception`, `@keyword.conditional`, `@keyword.coroutine`, `@keyword.directive`, `@punctuation`, `@punctuation.delimiter`, `@punctuation.bracket`, `@punctuation.special`, `@comment`, `@comment.documentation`, `@comment.error`, `@comment.warning`, `@comment.todo`, `@comment.note`, `@type`, `@type.builtin`, `@type.qualifier`, `@type.definition`, `@attribute`, `@attribute.builtin`, `@property`, `@markup`, `@markup.strong`, `@markup.italic`, `@markup.strikethrough`, `@markup.underline`, `@markup.heading` (and `.1`–`.6`), `@markup.quote`, `@markup.math`, `@markup.link`, `@markup.link.label`, `@markup.link.url`, `@markup.raw`, `@markup.raw.block`, `@markup.list`, `@markup.list.checked`, `@markup.list.unchecked`, `@diff.plus`, `@diff.minus`, `@diff.delta`, `@tag`, `@tag.builtin`, `@tag.attribute`, `@tag.delimiter`, `@error`. (Deprecated since 0.10 but still rendered: `@text`, `@text.literal`, `@text.reference`, `@text.title`, `@text.uri`, `@text.underline`, `@text.todo`, `@text.warning`, `@parameter`, `@field`, `@namespace` — keep links to their replacements for backward compat.)
+
+**LSP semantic tokens**: at minimum link `@lsp.type.namespace`, `@lsp.type.type`, `@lsp.type.class`, `@lsp.type.enum`, `@lsp.type.interface`, `@lsp.type.struct`, `@lsp.type.parameter`, `@lsp.type.variable`, `@lsp.type.property`, `@lsp.type.enumMember`, `@lsp.type.function`, `@lsp.type.method`, `@lsp.type.macro`, `@lsp.type.decorator`, `@lsp.type.keyword`, `@lsp.type.modifier`, `@lsp.type.comment`, `@lsp.type.string`, `@lsp.type.number`, `@lsp.type.regexp`, `@lsp.type.operator` to the corresponding `@<x>` Treesitter groups (Neovim 0.9 ships some of these as defaults). Optionally style modifiers: `@lsp.mod.deprecated` (e.g. `strikethrough = true`), `@lsp.mod.readonly`, `@lsp.mod.defaultLibrary`, `@lsp.typemod.variable.readonly` (link to `@constant`), `@lsp.typemod.function.defaultLibrary` (link to `@function.builtin`), `@lsp.typemod.variable.defaultLibrary` (link to `@variable.builtin`).
+
+### 4. Colorscheme plugin structure
+
+Recommended layout:
+
+```
+my-colorscheme.nvim/
+├── colors/
+│   ├── mytheme.lua                # entry; sets vim.g.colors_name, dispatches
+│   ├── mytheme-dark.lua
+│   └── mytheme-light.lua
+├── lua/
+│   └── mytheme/
+│       ├── init.lua               # setup() / load()
+│       ├── palette.lua            # raw colors
+│       ├── theme.lua              # palette → semantic colors
+│       ├── highlights/
+│       │   ├── init.lua           # aggregates and applies
+│       │   ├── editor.lua         # core UI groups
+│       │   ├── syntax.lua         # legacy + treesitter
+│       │   ├── diagnostic.lua
+│       │   ├── lsp.lua            # @lsp.type/mod/typemod
+│       │   └── plugins.lua        # OPTIONAL plugin-specific tweaks
+│       └── terminal.lua           # vim.g.terminal_color_*
+├── plugin/
+│   └── mytheme.lua                # commands, autocmds (optional)
+└── doc/
+    └── mytheme.txt
+```
+
+A typical `colors/mytheme.lua`:
+
+```lua
+vim.cmd('highlight clear')
+if vim.fn.exists('syntax_on') == 1 then vim.cmd('syntax reset') end
+vim.o.termguicolors = true
+vim.g.colors_name = 'mytheme'
+require('mytheme').load()
+```
+
+The `load()` function should:
+
+1. Determine variant (dark/light) from `vim.o.background`.
+2. Resolve the palette and semantic colors.
+3. Iterate a flat table of `{name = opts}` and call `nvim_set_hl(0, name, opts)`. Do *not* set `default = true` from the colorscheme — your highlights must take precedence over plugin-supplied defaults.
+4. Set `vim.g.terminal_color_0` through `vim.g.terminal_color_15` to define the 16 ANSI colors used by `:terminal`.
+
+Listen for `ColorScheme` if you want to automatically re-apply (most users do `:colorscheme mytheme` once per session, so this is rarely needed for the colorscheme itself, but plugins use it heavily to refresh their links).
+
+### 5. The `default = true` interaction with plugins
+
+When a plugin runs `vim.api.nvim_set_hl(0, "FooNormal", { link = "NormalFloat", default = true })`:
+
+- If the user (or colorscheme) has *already* set `FooNormal`, the call is a no-op. The colorscheme's definition wins.
+- If `FooNormal` is not yet defined, the link is established. Whenever `NormalFloat` changes (e.g. user calls `:colorscheme`), the plugin re-runs its setup on `ColorScheme` autocmd, re-establishing the link, and the new `NormalFloat` flows through.
+
+This is why **a plugin-agnostic colorscheme should NOT use `default = true` on its own definitions**: the user might want to override individual groups, and `default` would defeat that. A colorscheme that sets `default = true` on every highlight would lose to *any* prior definition, including any plugin's own `default` link, leading to the plugin's link staying in effect rather than your color.
+
+Conversely, you should generally *not* override plugin-internal groups. If a user's colorscheme sets `TelescopeBorder` directly, telescope will respect that, but you've now coupled to telescope. The clean approach is: define `FloatBorder`, `NormalFloat`, `Pmenu`, `PmenuSel`, `Visual`, `Search`, etc. correctly, and let telescope (and 70+ similar plugins) inherit them.
+
+### 6. `vim.ui` floating window theming
+
+`vim.ui.select()` and `vim.ui.input()` (when no plugin overrides them) open a built-in popup. These use `Pmenu`/`PmenuSel`/`NormalFloat`/`FloatBorder`/`FloatTitle`. The new `'winborder'` option in 0.11+ (e.g. `vim.o.winborder = 'rounded'`) gives every floating window a default border — that border uses `FloatBorder`. So your colorscheme's `FloatBorder` definition flows through `vim.ui.*`, LSP hover, signature help, diagnostic floats (which respect `NormalFloat`/`FloatBorder` via `vim.diagnostic.config({ float = { border = ... } })`), nvim-cmp documentation popup, blink.cmp menus, telescope, fzf-lua, snacks pickers, neo-tree popups, mini.pick, and basically every modal UI written in the last 3 years.
+
+### 7. `vim.diagnostic.config()` and highlight groups
+
+The diagnostic system reads its colors from highlight groups indirectly. `vim.diagnostic.config({ signs = true, virtual_text = true, underline = true, float = {...} })` enables specific renderers; each renderer pulls from its corresponding `Diagnostic{Renderer}{Severity}` group. The signs renderer in 0.10+ uses extmark `sign_text`/`sign_hl_group` instead of legacy `:sign-define` (which was deprecated in 0.10 and *removed* in 0.12 per the 0.12 news file). Sign highlights now come from `DiagnosticSignError/Warn/Info/Hint/Ok` (linked to `Diagnostic{Severity}` by default).
+
+### 8. Terminal colors
+
+In your `load()`:
+
+```lua
+vim.g.terminal_color_0  = palette.black
+vim.g.terminal_color_1  = palette.red
+vim.g.terminal_color_2  = palette.green
+vim.g.terminal_color_3  = palette.yellow
+vim.g.terminal_color_4  = palette.blue
+vim.g.terminal_color_5  = palette.magenta
+vim.g.terminal_color_6  = palette.cyan
+vim.g.terminal_color_7  = palette.white
+vim.g.terminal_color_8  = palette.bright_black
+-- ... through terminal_color_15
+```
+
+### 9. Backwards compatibility considerations
+
+- **0.10 minimum**: `WinBar`, `WinBarNC`, `Added`/`Changed`/`Removed`, `SnippetTabstop`, the `@markup.*` Treesitter renames. If you support 0.9 keep also defining the old `@text.*` aliases as links.
+- **0.11 features**: `PmenuMatch`, `PmenuMatchSel`, `LspReferenceTarget`, `DiagnosticVirtualLines*`, `vim.hl.priorities`, `'winborder'`. Wrap anything 0.11-only in `if vim.fn.has('nvim-0.11') == 1 then ... end`.
+- **0.12 features**: `update = true`, `DiffTextAdd`, `dim`/`blink`/`conceal`/`overline` SGR attrs, `'pumborder'`. The `update = true` option is a no-op on older Neovim — calls just replace as before, which is functionally fine for a colorscheme.
+
+You can detect support via `vim.fn.has('nvim-0.10')`/`'nvim-0.11'`/`'nvim-0.12'`. Avoid using deprecated APIs like `nvim_get_hl_by_name` (deprecated in 0.9) or `nvim_get_hl_by_id`; use `nvim_get_hl(0, { name = ... })`.
+
+### 10. Pitfalls and edge cases
+
+- **`nvim_set_hl` after startup with empty namespaces**: There is a long-standing edge case where in a `--clean` session, calling `nvim_set_hl(0, 'CursorLine', {bg='#ff0000'})` after startup sometimes appears not to apply (issue #18266); using `vim.cmd('hi CursorLine guibg=#ff0000')` works. Modern Neovim (0.10+) has largely fixed this, but if you hit it, run highlights from a `VimEnter` autocmd or just inside a `colors/*.lua` file.
+- **`default = true` and `:hi`** display: Neovim 0.10 has a cosmetic bug where `default = true` adds spurious empty `cterm=` `gui=` to `:hi` output (issue #23474). Harmless.
+- **Hyphenated filetypes**: `@lsp.type.X.foo-bar` raises `E5248`. Workaround: don't suffix semantic token groups with the filetype, or rename the filetype. (issue #23184)
+- **`@variable` no longer falls back to `Identifier` after 0.10**: define `@variable` explicitly.
+- **`hi clear Folded` with link**: Folded historically rejected linking with `E414` in some cases. Always set `Folded` with full attributes, not just a link.
+- **Terminal vs GUI**: If you support cterm-only terminals (linux console, no truecolor), populate `cterm`, `ctermfg`, `ctermbg` for every group — these don't auto-derive from gui values. Many themes skip this entirely; if true-color is a hard requirement, at least set `vim.o.termguicolors = true` from your `colors/*.lua` and document it.
+- **Plugin hot-reload**: After `:colorscheme foo`, plugins listening to `ColorScheme` re-establish their `default` links. If your scheme dynamically changes `Normal`/`NormalFloat` after the initial load (e.g. transparency toggle), you'll need to re-emit `:doautocmd ColorScheme` (or `vim.api.nvim_exec_autocmds('ColorScheme', { pattern = vim.g.colors_name })`) so plugins refresh.
+
+### 11. Recommended workflow
+
+1. Build a Lua palette (`{ bg, bg_alt, fg, fg_alt, red, green, yellow, blue, magenta, cyan, gray, plus selection/diff/diagnostic accents }`).
+2. Construct a *semantic* layer mapping palette colors to roles (`syntax.keyword`, `syntax.string`, `ui.border`, `ui.float_bg`, `diff.add`, `diag.error`, etc.). Don't reference raw hex from highlight definitions.
+3. Define core editor groups, then standard syntax groups, then Treesitter `@` roots, then `Diagnostic*`, then `@lsp.*` overrides. Use `link` aggressively *within your scheme* to keep it DRY (e.g. `@function.method = { link = '@function' }`).
+4. Set terminal colors.
+5. Test with `:Inspect`, `:InspectTree`, `:checkhealth`, and the `:hi` command.
+6. Test plugin coverage by spinning up a kitchen-sink config (LazyVim is a good benchmark) and visually verifying telescope, blink.cmp/nvim-cmp, gitsigns, neo-tree, lualine, trouble, noice, snacks pickers, mini.* — without ever writing a plugin-specific override.
+
+---
+
+## Caveats
+
+- Some specific facts about exact default-link tables (`hl_map` in `treesitter/highlighter.lua`, the full `highlight_init_both`/`highlight_init_dark`/`highlight_init_light` arrays in `src/nvim/highlight_group.c`) shift between Neovim versions. The list above is consolidated from the 0.10–0.12 source and `:h treesitter-highlight-groups`, `:h hl-*` tags, and `:h lsp-semantic_tokens`, but you should run `:hi` and `:Inspect` on your target Neovim version to verify before shipping.
+- The `@lsp.type.* → @<treesitter>` default links shipped in core have evolved. As of 0.10/0.11, `@lsp.type.parameter → @variable.parameter`, `@lsp.type.property → @variable.member`, `@lsp.type.namespace → @module`, `@lsp.type.method → @function.method` (the deprecated `@parameter`, `@field`, `@namespace`, `@method` are aliased). On 0.9 the older names were used; provide both for backward compat.
+- "Plugin-agnostic" is an ideal, not a guarantee. A small minority of plugins (older or stylistic ones) hardcode their colors with `default = false`, ignoring user themes. The list of supported plugins in tokyonight (~70+) and catppuccin (~50+) integrations is roughly the long tail of plugins that *don't* respect the link convention. For mainstream, recently-maintained plugins (the ones used in LazyVim, AstroNvim, NvChad, kickstart) the link-via-`default=true` convention is universal.
+- Neovim 0.12 (released March 2026) and 0.13 are still seeing default-colorscheme/highlight-group adjustments; the `vim._core.ui2` cmdline UI is experimental and subject to change. Treat any 0.12-only highlight as "best-effort" and gate it with `has('nvim-0.12')` so users on 0.10/0.11 don't see errors.
+- Some search results referenced were summarized via secondary documentation sites (DeepWiki, Mintlify mirrors of Neovim docs) when the canonical source was unfetchable; the structural and naming details were corroborated against the official `neovim/neovim` GitHub source (`runtime/doc/news-0.10.txt`, `news-0.11.txt`, `news-0.12.txt`, `runtime/doc/diagnostic.txt`, `src/nvim/highlight_group.c`) and the upstream READMEs for tokyonight, catppuccin, gitsigns, nvim-cmp, and telescope.
