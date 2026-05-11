@@ -1,16 +1,5 @@
 local M = {}
 
-local function resolve_italic(config, group_info)
-  if type(group_info) ~= "table" then
-    return group_info
-  end
-  local result = vim.deepcopy(group_info)
-  if config.italic.comments and result.link == nil then
-    return result
-  end
-  return result
-end
-
 function M.load(theme, config)
   local editor = require("cybersynth.highlights.editor").get(theme, config)
   local syntax = require("cybersynth.highlights.syntax").get(theme, config)
@@ -21,11 +10,11 @@ function M.load(theme, config)
 
   local util = require("cybersynth.util")
 
-  util.apply(editor, theme, config)
-  util.apply(syntax, theme, config)
-  util.apply(treesitter, theme, config)
-  util.apply(lsp, theme, config)
-  util.apply(diagnostic, theme, config)
+  util.apply(editor)
+  util.apply(syntax)
+  util.apply(treesitter)
+  util.apply(lsp)
+  util.apply(diagnostic)
 
   terminal.apply(theme, config)
 
@@ -38,11 +27,7 @@ function M.load(theme, config)
       "TabLine", "TabLineFill", "TabLineSel",
     }
     for _, name in ipairs(transparent_groups) do
-      local ok, existing = pcall(vim.api.nvim_get_hl, 0, { name = name, link = false })
-      if ok and existing then
-        local bg_val = existing.bg and "NONE" or nil
-        util.set(0, name, { bg = "NONE" })
-      end
+      util.set(0, name, { bg = "NONE" })
     end
   end
 

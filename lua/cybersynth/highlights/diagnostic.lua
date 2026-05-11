@@ -3,17 +3,6 @@ local M = {}
 function M.get(theme, config)
   local c = theme
 
-  local function severity_bg(severity)
-    local diag_colors = {
-      error = c.diag.error,
-      warn = c.diag.warn,
-      info = c.diag.info,
-      hint = c.diag.hint,
-      ok = c.diag.ok,
-    }
-    return diag_colors[severity]
-  end
-
   local groups = {
     DiagnosticError = { fg = c.diag.error },
     DiagnosticWarn = { fg = c.diag.warn },

@@ -10,7 +10,7 @@ function M.set(ns, name, opts)
   vim.api.nvim_set_hl(ns, name, clean)
 end
 
-function M.apply(groups, theme, config)
+function M.apply(groups)
   for name, opts in pairs(groups) do
     local min_ver = opts._min_version
     if min_ver and type(min_ver) == "string" then

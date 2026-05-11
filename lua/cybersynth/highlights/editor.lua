@@ -2,8 +2,6 @@ local M = {}
 
 function M.get(theme, config)
   local c = theme
-  local it = config.italic
-  local bd = config.bold
 
   local groups = {
 
@@ -113,7 +111,6 @@ function M.get(theme, config)
     Directory = { fg = c.ui.directory.fg },
     Title = { fg = c.syntax.variable, bold = true },
     Underlined = { fg = c.syntax.underline, underline = true },
-    Ignore = { fg = c.fg.subtle },
 
     RedrawDebugNormal = { fg = c.bg.base, bg = c.fg.base },
     RedrawDebugClear = { fg = c.bg.base, bg = c.diag.warn },

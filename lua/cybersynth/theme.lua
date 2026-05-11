@@ -15,7 +15,6 @@ function M.get(variant)
   c.bg.border = palette.border
   c.bg.selection = palette.selection
   c.bg.search_bg = palette.search_bg
-  c.bg.search_fg = palette.search_fg
   c.bg.diff_add = palette.diff_add
   c.bg.diff_change = palette.diff_change
   c.bg.diff_delete = palette.diff_delete

@@ -1,7 +1,5 @@
 local M = {}
 
-local loaded = false
-
 function M.setup(opts)
   local config = require("cybersynth.config")
   config.extend(opts)
@@ -29,8 +27,6 @@ function M.load()
   local theme = theme_module.get(variant)
 
   require("cybersynth.highlights.init").load(theme, config)
-
-  loaded = true
 end
 
 function M.get_colors()

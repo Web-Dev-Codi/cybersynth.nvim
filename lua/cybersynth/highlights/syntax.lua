@@ -3,15 +3,6 @@ local M = {}
 function M.get(theme, config)
   local c = theme
   local it = config.italic
-  local bd = config.bold
-
-  local function opt(tbl)
-    local result = {}
-    for k, v in pairs(tbl) do
-      result[k] = v
-    end
-    return result
-  end
 
   local groups = {
     Comment = { fg = c.syntax.comment, italic = it.comments },
@@ -22,7 +13,7 @@ function M.get(theme, config)
     Float = { fg = c.syntax.number },
     Boolean = { fg = c.syntax.boolean },
     Identifier = { fg = c.syntax.variable },
-    Function = { fg = c.syntax["function"], bold = bd.functions, italic = it.functions },
+    Function = { fg = c.syntax["function"], bold = config.bold.functions, italic = it.functions },
     Statement = { fg = c.syntax.keyword },
     Conditional = { fg = c.syntax.keyword_conditional, italic = it.keywords },
     Repeat = { fg = c.syntax.keyword_repeat },
