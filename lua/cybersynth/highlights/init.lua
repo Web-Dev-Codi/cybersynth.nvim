@@ -46,6 +46,20 @@ function M.load(theme, config)
         end
     end
 
+    -- file tree links: plugins set these with default=true, so our links win
+    local tree_links = {
+        NeoTreeNormal = "Normal",
+        NeoTreeNormalNC = "NormalNC",
+        NeoTreeWinSeparator = "WinSeparator",
+        NeoTreeVertSplit = "VertSplit",
+        NvimTreeNormal = "Normal",
+        NvimTreeNormalNC = "NormalNC",
+        NvimTreeWinSeparator = "WinSeparator",
+    }
+    for name, link in pairs(tree_links) do
+        util.set(0, name, { link = link })
+    end
+
     if config.overrides and next(config.overrides) then
         for name, opts in pairs(config.overrides) do
             util.set(0, name, opts)
