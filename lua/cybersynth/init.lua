@@ -6,25 +6,17 @@ function M.setup(opts)
 end
 
 function M.load()
-  local config_module = require("cybersynth.config")
-  local config = config_module.get()
+  local config = require("cybersynth.config").get()
 
-  if config.variant == "auto" then
-    if vim.o.background == "light" then
-      vim.o.background = "light"
-    else
-      vim.o.background = "dark"
-    end
-  else
-    vim.o.background = config.variant
+  local variant = config.variant
+  if variant == "auto" then
+    variant = vim.o.background == "light" and "light" or "dark"
   end
-
-  local theme_module = require("cybersynth.theme")
-  local variant = config.variant == "auto" and vim.o.background or config.variant
   if variant ~= "dark" and variant ~= "light" then
     variant = "dark"
   end
-  local theme = theme_module.get(variant)
+
+  local theme = require("cybersynth.theme").get(variant)
 
   require("cybersynth.highlights.init").load(theme, config)
 end

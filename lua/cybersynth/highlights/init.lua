@@ -27,7 +27,11 @@ function M.load(theme, config)
       "TabLine", "TabLineFill", "TabLineSel",
     }
     for _, name in ipairs(transparent_groups) do
-      util.set(0, name, { bg = "NONE" })
+      local ok, existing = pcall(vim.api.nvim_get_hl, 0, { name = name, link = false })
+      if ok and existing then
+        existing.bg = "NONE"
+        util.set(0, name, existing)
+      end
     end
   end
 
