@@ -1,4 +1,5 @@
 <div align="center">
+  <img src="assets/cybersynth_logo.png" width="100%" alt="Cybersynth logo">
   <h1>cybersynth.nvim</h1>
   <p><i>Outrun for Neovim. Plugin-agnostic neon, AAA-accessible, on both dark and light.</i></p>
 </div>
@@ -14,6 +15,10 @@
   <img src="https://img.shields.io/badge/Made_with-Lua-fe4450.svg?style=for-the-badge&logo=lua&logoColor=fe4450&labelColor=241b2f">
   <img src="https://img.shields.io/badge/WCAG_AAA-Accessible-f97e72.svg?style=for-the-badge&logo=accessibility&labelColor=241b2f">
 </p>
+
+<br>
+
+<img src="https://placehold.co/800x450/262335/ffffff?text=Cybersynth+Dark+Mode&font=source-sans-pro" width="100%" alt="Cybersynth dark mode preview">
 
 ---
 
@@ -37,6 +42,20 @@ Synthwave colorschemes are usually one of two things: gorgeous and unreadable, o
 - ⚡ **Zero required config** — `colorscheme cybersynth` and done
 - 🎛 **Override anything** — palette, single highlights, per-variant, via `overrides`
 - 🖥 **Terminal colors** — 16 ANSI colors set for both variants
+
+---
+
+<details>
+<summary><b>📸 Gallery — dark, light, transparent (click to expand)</b></summary>
+<br>
+
+| Variant | Preview |
+|---------|---------|
+| **Dark** — the canonical sunset | <img src="https://placehold.co/600x340/262335/ffffff?text=Dark+Mode&font=source-sans-pro" width="100%" alt="dark"> |
+| **Light** — the violet hour | <img src="https://placehold.co/600x340/f5f0ff/1a1a2e?text=Light+Mode&font=source-sans-pro" width="100%" alt="light"> |
+| **Transparent** — float on your wallpaper | <img src="https://placehold.co/600x340/111111/ffffff?text=Transparent+Mode&font=source-sans-pro" width="100%" alt="transparent"> |
+
+</details>
 
 ---
 
