@@ -13,25 +13,31 @@ end
 function M.apply(groups, theme, config)
   for name, opts in pairs(groups) do
     local min_ver = opts._min_version
-    if min_ver then
-      if type(min_ver) == "string" then
-        if vim.fn.has("nvim-" .. min_ver) ~= 1 then goto continue end
+    if min_ver and type(min_ver) == "string" then
+      if vim.fn.has("nvim-" .. min_ver) ~= 1 then
+        -- skip: version gate not met
+      else
+        M.apply_single(name, opts)
       end
-    end
-    if type(opts) == "string" then
-      M.set(0, name, { link = opts })
-    elseif opts.link then
-      M.set(0, name, { link = opts.link })
     else
-      local resolved = {}
-      for k, v in pairs(opts) do
-        if k ~= "_min_version" then
-          resolved[k] = v
-        end
-      end
-      M.set(0, name, resolved)
+      M.apply_single(name, opts)
     end
-    ::continue::
+  end
+end
+
+function M.apply_single(name, opts)
+  if type(opts) == "string" then
+    M.set(0, name, { link = opts })
+  elseif opts.link then
+    M.set(0, name, { link = opts.link })
+  else
+    local resolved = {}
+    for k, v in pairs(opts) do
+      if k ~= "_min_version" then
+        resolved[k] = v
+      end
+    end
+    M.set(0, name, resolved)
   end
 end
 
