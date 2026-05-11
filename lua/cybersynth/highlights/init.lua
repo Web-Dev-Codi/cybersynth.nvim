@@ -21,6 +21,8 @@ function M.load(theme, config)
   if config.transparent then
     local transparent_groups = {
       "Normal", "NormalNC", "NormalFloat",
+      "FloatBorder", "FloatTitle", "FloatFooter",
+      "WinSeparator", "VertSplit",
       "SignColumn", "FoldColumn",
       "StatusLine", "StatusLineNC",
       "WinBar", "WinBarNC",

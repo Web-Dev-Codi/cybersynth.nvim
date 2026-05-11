@@ -89,10 +89,11 @@ function M.get(variant)
   c.ui.float.fg = c.fg.base
   c.ui.float.bg = c.bg.float
   c.ui.float_border = {}
-  c.ui.float_border.fg = palette.border
+  c.ui.float_border.fg = palette.amber
   c.ui.float_border.bg = c.bg.float
   c.ui.title = {}
-  c.ui.title.fg = palette.magenta
+  c.ui.title.fg = c.bg.base
+  c.ui.title.bg = palette.cyan
   c.ui.line_nr = {}
   c.ui.line_nr.fg = c.fg.invisible
   c.ui.line_nr.bg = c.bg.base

@@ -10,10 +10,10 @@ function M.get(theme, config)
     NormalFloat = { fg = c.ui.float.fg, bg = c.ui.float.bg },
 
     FloatBorder = { fg = c.ui.float_border.fg, bg = c.ui.float_border.bg },
-    FloatTitle = { fg = c.ui.title.fg, bg = c.ui.float.bg },
+    FloatTitle = { fg = c.ui.title.fg, bg = c.ui.title.bg },
     FloatFooter = { _min_version = "0.11", fg = c.fg.subtle, bg = c.ui.float.bg },
 
-    WinSeparator = { fg = c.fg.invisible, bg = c.bg.base },
+    WinSeparator = { fg = c.ui.float_border.fg, bg = c.bg.base },
     VertSplit = { link = "WinSeparator" },
 
     WinBar = { _min_version = "0.10", fg = c.fg.dim, bg = c.bg.alt },
