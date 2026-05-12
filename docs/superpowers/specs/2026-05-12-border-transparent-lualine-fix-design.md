@@ -61,12 +61,11 @@ StatusLine, StatusLineNC, StatusLineTerm, StatusLineTermNC,
 WinBar, WinBarNC,
 TabLine, TabLineFill, TabLineSel,
 MsgArea, MsgSeparator,
-CmdLine, CmdLinePopup,
-NormalPopUpMenu, MessageWindow,
+CmdLine, CmdlinePopupMenu,
 LineNr, LineNrAbove, LineNrBelow,
 CursorLineNr, CursorLineSign, CursorLineFold,
 CursorLine, CursorColumn, ColorColumn,
-Folded, FoldColumn,
+Folded,
 EndOfBuffer, Whitespace, NonText,
 Pmenu, PmenuSel, PmenuSbar, PmenuThumb,
 PmenuKind, PmenuKindSel, PmenuExtra, PmenuExtraSel,
@@ -76,7 +75,7 @@ Visual, VisualNOS,
 ```
 
 ### Implementation
-The transparent pass in `init.lua` iterates each group, fetches the current highlight definition via `vim.api.nvim_get_hl`, sets `bg = "NONE"`, and reapplies. Version-gated groups (`CmdLinePopup` at 0.11, `NormalPopUpMenu` at 0.10, `MessageWindow` at 0.12, `CursorLineSign`/`CursorLineFold` at 0.10) are naturally skipped if `vim.api.nvim_get_hl` fails for them on older Neovim versions.
+The transparent pass in `init.lua` (49 groups) iterates each group, fetches the current highlight definition via `vim.api.nvim_get_hl`, sets `bg = "NONE"`, and reapplies. Groups that don't exist on older Neovim versions are naturally skipped by the `pcall` guard. `NormalPopUpMenu` and `MessageWindow` were excluded — they are not active Neovim highlight groups with defaults on any supported version.
 
 ## 5. Files Changed
 
