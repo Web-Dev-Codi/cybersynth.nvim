@@ -12,6 +12,7 @@ function M.get(theme, config)
     FloatBorder = { fg = c.ui.float_border.fg, bg = c.ui.float_border.bg },
     FloatTitle = { fg = c.ui.title.fg, bg = c.ui.title.bg },
     FloatFooter = { _min_version = "0.11", fg = c.fg.subtle, bg = c.ui.float.bg },
+    NormalFloatBorder = { _min_version = "0.10", fg = c.ui.float_border.fg, bg = c.ui.float_border.bg },
 
     WinSeparator = { fg = c.ui.float_border.fg, bg = c.bg.base },
     VertSplit = { link = "WinSeparator" },
@@ -85,7 +86,7 @@ function M.get(theme, config)
     Question = { fg = c.syntax["function"], bold = true },
     ModeMsg = { fg = c.fg.dim },
     MsgArea = { fg = c.fg.dim },
-    MsgSeparator = { fg = c.fg.invisible },
+    MsgSeparator = { fg = c.ui.float_border.fg, bg = c.bg.base },
 
     NonText = { fg = c.ui.non_text.fg },
     EndOfBuffer = { fg = c.bg.deep },
