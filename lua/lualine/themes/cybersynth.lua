@@ -1,1 +1,1 @@
-return require("cybersynth.lualine").get_theme()
+return require("cybersynth.lualine")()
