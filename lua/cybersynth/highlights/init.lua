@@ -24,7 +24,6 @@ function M.load(theme, config)
             "NormalNC",
             "NormalFloat",
             "FloatBorder",
-            "FloatTitle",
             "FloatFooter",
             "WinSeparator",
             "VertSplit",
@@ -67,8 +66,6 @@ function M.load(theme, config)
             "Question",
             "QuickFixLine",
             "ToolbarLine",
-            "Visual",
-            "VisualNOS",
         }
         for _, name in ipairs(transparent_groups) do
             local ok, existing = pcall(vim.api.nvim_get_hl, 0, { name = name, link = false })
